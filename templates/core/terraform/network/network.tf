@@ -19,6 +19,7 @@ resource "azurerm_subnet" "azure_firewall" {
   virtual_network_name = azurerm_virtual_network.core.name
   resource_group_name  = var.resource_group_name
   address_prefixes     = [local.firewall_subnet_address_space]
+  service_endpoints    = ["Microsoft.Storage"]
 }
 
 resource "azurerm_subnet" "app_gw" {
