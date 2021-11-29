@@ -5,7 +5,7 @@ This repo is for modifications and extensions of the Azure TRE accelerator provi
 <br />  
 
 ## Using the repository
-The primary branch for this forked repository is "queens/develop", all new branches should branch from this one, and merge to it. This allows upstream changes from the Microsoft repo to be synced without conflict. If upstream changes are desired in the Queen's development branch, [fetch changes from the upstream repo](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/syncing-a-fork), then merge the "main" branch into "queens/develop" - note that doing this is likely to result in merge conflicts, which will need to be resolved.
+The primary branch for this forked repository is `queens/develop`, all new branches should branch from this one, and merge to it. This allows upstream changes from the Microsoft repo to be synced without conflict. If upstream changes are desired in the Queen's development branch, [fetch changes from the upstream repo](https://docs.github.com/en/pull-requests/collaborating-with-pull-requests/working-with-forks/syncing-a-fork), then merge the "main" branch into "queens/develop" - note that doing this is likely to result in merge conflicts, which will need to be resolved.
 
 <br />  
 
@@ -38,6 +38,7 @@ This section is broadly for additional insights, elaborations, etc. on the exist
 ### **Makefile**
 The base TRE repo contains a "Makefile" with many useful operations for working with TRE. Some notable ones are:
 <br />  
+
 `all` - Creates management / "bootstrap" infrastructure (ACR for porter images, Storage Account for terraform state), build and pushes core porter bundles, and deploys TRE core infrastructure.
 
 `mgmt-deploy` / mgmt-destroy: deploys / destroys the management / "bootstrap" infrastructure: ACR for porter images, Storage Account for terraform state.
@@ -47,10 +48,10 @@ The base TRE repo contains a "Makefile" with many useful operations for working 
 `tre-stop / tre-start`: Stops or "disables" some of the more expensive-to-run core TRE infrastructure, namely the Firewall and Application Gateway. "start" 
 turns them back on again.
 
-`porter-build/install/uninstall/publish` : analgous to the management plane running the corresponding Porter commands. Reads in environment variables from several ".env" files (devops/.env, templates/core/,env, templates/workspaces/<your_workspace>/.env) before running the command, emulating the management 
+`porter-build/install/uninstall/publish` : analgous to the management plane running the corresponding Porter commands. Reads in environment variables from several ".env" files (`devops/.env`, `templates/core/,env`, `templates/workspaces/<your_workspace>/.env`) before running the command, emulating the management 
 plane environment (specifically the "resource processor"). Note the management plane only uses Porter install and uninstall.
 
-`register-bundle-payload`: Publishes already-built Porter bundle to management/bootstrap ACR, and outputs a JSON block to be used in registering the bundle with the TRE management plane (API). Requires DIR and BUNDLE_TYPE arguments (eg. make register-bundle DIR=templates/workspaces/imaging_annotations/ BUNDLE_TYPE=workspace)
+`register-bundle-payload`: Publishes already-built Porter bundle to management/bootstrap ACR, and outputs a JSON block to be used in registering the bundle with the TRE management plane (API). Requires DIR and BUNDLE_TYPE arguments (eg. `make register-bundle DIR=templates/workspaces/imaging_annotations/ BUNDLE_TYPE=workspace`)
 
 `register-bundle`: Similar to above, rather than outputting JSON for manual Bundle registration, attempts to call TRE API and do so directly. Requires a token to authenticate to the API.
 
@@ -72,6 +73,13 @@ For instance, you perform a manual porter install of your bundle to test it, som
 
 <br />  
 
+### **Note on the Firewall**
+By default, all egress traffic out of the TRE environment is routed through the core Firewall and is subject to its rules (generally deny by default). When testing new bundles / deployments, it may be desirable to add a broad allow rule to the firewall for outbound internet traffic, as exactly what is required from the internet may be difficult to determine up front. This can be limited to the workspace-in-testing's VNet address space as the source, as not to interfere with other workspace's security. Once the bundle is working, the Firewall logs can be analyzed to refine exactly what internet destinations should be allowed, or mirrored in the shared hub network.
+
+Alternatively, the workspace's VNet may be disassociated with the core route table, bypassing the firewall altogether (though still subject to NSG rules). This should not be done for production workspaces.
+
+<br />  
+
 ### **Workspace Authoring**
 
 The official docs provide some [guidance on authoring new workspace templates / bundles](https://microsoft.github.io/AzureTRE/tre-workspace-authors/authoring-workspace-templates/). Below is a general workflow for doing so.
@@ -81,11 +89,11 @@ The official docs provide some [guidance on authoring new workspace templates / 
 #### **Dev environment**
 
 [Docker](https://docs.docker.com/desktop/windows/release-notes/) is a must for any TRE development, including authoring new templates. It enables the use of the dev container provided by Microsoft, which contains all of the tooling needed to work with TRE. Note that it can take a while (~40 minutes) for the container image to build for the first time.
-[VSCode](https://code.visualstudio.com/Download) is also highly reccommended, as it has features for development within a container. If you choose another IDE / COde Editor, make sure it is container-compatible.
+[VSCode](https://code.visualstudio.com/Download) is also highly reccommended, as it has features for development within a container. If you choose another IDE / Code Editor, make sure it is container-compatible.
 
 Once the dev container is up and running, make a new branch off of queens/develop to hold the new template. It can be pulled into develop once it is completed.
 
-The easiest way to get started is make a copy of the base workspace directory (templates/workspaces/base), as its Porter manifest and supporting files make it a "TRE-compatible" bundle. This applies to workspace-services and user resources as well. Starting from scratch with `porter init` is ok too, but TRE default parameters and credentials must be added, [as described here](https://microsoft.github.io/AzureTRE/tre-workspace-authors/authoring-workspace-templates/#workspace-bundle-manifest). A ".env" file is also necessary in the template directory, its values will be passed into Porter when using the Makefile, and simulates values that the TRE management plane would pass in when installing from the local environment.
+The easiest way to get started is make a copy of the base workspace directory (`templates/workspaces/base`), as its Porter manifest and supporting files make it a "TRE-compatible" bundle. This applies to workspace-services and user resources as well. Starting from scratch with `porter init` is ok too, but TRE default parameters and credentials must be added, [as described here](https://microsoft.github.io/AzureTRE/tre-workspace-authors/authoring-workspace-templates/#workspace-bundle-manifest). A `.env` file is also necessary in the template directory, its values will be passed into Porter when using the Makefile, and simulates values that the TRE management plane would pass in when installing from the local environment.
 
 templates/workspaces/<my_workspace>/.env
 ```
@@ -121,7 +129,7 @@ Once the bundle is in a good state, it's time to publish it to ACR and register 
 ```
 make register-bundle-payload DIR=templates/workspaces/<my_workspace>/ BUNDLE_TYPE=workspace
 ```
-This will push the bundle to ACR, and output the JSON payload needed to register it with TRE. Payload-in-hand, navigate to the TRE API SwaggerUI ([set up as part of the core deployment](https://microsoft.github.io/AzureTRE/tre-admins/setup-instructions/deploying-azure-tre/#using-the-api-docs)) and make a POST request to the /workspace-templates endpoint with the payload in the body. This will register the template and allow it to be installed via the TRE API. Making a GET request to the same endpoint will show the newly-registered template.
+This will push the bundle to ACR, and output the JSON payload needed to register it with TRE. Payload-in-hand, navigate to the TRE API SwaggerUI ([set up as part of the core deployment](https://microsoft.github.io/AzureTRE/tre-admins/setup-instructions/deploying-azure-tre/#using-the-api-docs)) and make a POST request to the `/workspace-templates` endpoint with the payload in the body. This will register the template and allow it to be installed via the TRE API. Making a GET request to the same endpoint will show the newly-registered template.
 
 Before actually creating the workspace through TRE, an Azure AD App Registration must be created. Assigning Azure AD users to this App Registration (or more accurately, to its corresponding "Enterprise Application") will grant them permissions to manage the instance of the workspace about to be created through the TRE API, ie adding workspace services, or deleting the workspace, [as described here](https://microsoft.github.io/AzureTRE/azure-tre-overview/user-roles/#tre-workspace-owner). A script is provided to do this:
 
@@ -131,7 +139,7 @@ scripts/workspace_app_reg.py --tre-name <my_TRE_id> --workspace-name <my_workspa
 Note that the parameters are used in naming only and may be anything, the registration will be named like "<tre-name> Workspace - <workspace_name>".
 The script will output an App ID to be used when creating the workspace. Before doing so, navigate to the App Registration's corresponding Enterprise Application in Azure AD (Azure Portal), and assign users to either "Researcher" or "Owner" roles (assigning yourself as an Owner is reccomended).
 
-Finally, the workspace may be created through the TRE API. Return to the SwaggerUI, and make a POST request to /workspaces with the following payload:
+Finally, the workspace may be created through the TRE API. Return to the SwaggerUI, and make a POST request to `/workspaces` with the following payload:
 ```json
 {
   "templateName": "<my_workspace_template_name>",
@@ -142,6 +150,10 @@ Finally, the workspace may be created through the TRE API. Return to the Swagger
   }
 }
 ```
-The workspace ID will be returned in the response. Make a GET request to /workspaces/<workspace_id> to see the status of the deployment. Status should go from "not_deployed -> "deploying" -> "deployed" or "deployment_failed". When the status is failure, this endpoint will return an error message that should help in troubleshooting. If the deployment seems "stuck", check the Azure portal to see if resources are in fact being deployed, and consult the [troubleshooting guide](https://microsoft.github.io/AzureTRE/tre-admins/troubleshooting-guide/) to find where something may be stuck. 
+The workspace ID will be returned in the response. Make a GET request to /workspaces/<workspace_id> to see the status of the deployment. Status should go from "not_deployed -> "deploying" -> "deployed" or "deployment_failed". When the status is failure, this endpoint will return an error message that should help in troubleshooting. If the deployment seems "stuck", check the Azure portal to see if resources are in fact being deployed, and consult the [troubleshooting guide](https://microsoft.github.io/AzureTRE/tre-admins/troubleshooting-guide/) to find where something may be stuck.
 
+<br />  
 
+#### **POC Workspace**
+
+A proof-of-concept custom workspace can be found in `templates/workspaces/imaging_annotations`, its documentation in `docs/tre-templates/workspaces/imaging-annotations.md`
